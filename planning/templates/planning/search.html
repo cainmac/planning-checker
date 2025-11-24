@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BPC Planning Checker | BridgePark Capital</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+</head>
+
+<body>
+<div class="page">
+    <div class="card">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-subtitle">BridgePark Capital</div>
+                <div class="brand-title">BPC Planning Checker</div>
+            </div>
+            <div class="badge">Planning Intelligence</div>
+        </header>
+
+        <!-- CREATE ALERT (TOP) -->
+        {% if last_query %}
+        <section class="alert-top">
+            <p>
+                Planning alerts for <strong>{{ last_query }}</strong>
+            </p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="address" value="{{ last_query }}">
+                <button type="submit" name="action" value="create_alert" class="watch-btn">
+                    Create alert
+                </button>
+            </form>
+        </section>
+        {% endif %}
+
+        {% if success %}
+            <div class="success">{{ success }}</div>
+        {% endif %}
+
+        <!-- SEARCH FORM (ALWAYS VISIBLE) -->
+        <form method="post" class="form">
+            {% csrf_token %}
+            <label for="{{ form.address.id_for_label }}" class="field-label">
+                Address or postcode
+            </label>
+            <div class="field-row">
+                {{ form.address }}
+                <button type="submit" name="action" value="search">Search</button>
+            </div>
+
+            <p class="hint">
+                Example: <code>UB6 8JF</code> or <code>249 Conway Crescent</code>.
+            </p>
+        </form>
+
+        {% if error %}
+            <div class="error">
+                {{ error }}
+                {% if croydon_manual_url %}
+                    <br>
+                    <a href="{{ croydon_manual_url }}" target="_blank" rel="noopener">
+                        Open Croydon planning search
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <hr class="divider">
+
+        <!-- RESULTS -->
+        {% if results_page %}
+            <div class="results-header">
+                <div class="results-title">
+                    Results
+                    {% if borough_label %}
+                        <span class="results-borough">({{ borough_label }})</span>
+                    {% endif %}
+                </div>
+                <div class="results-count">
+                    Page {{ results_page.number }} of {{ results_page.paginator.num_pages }} —
+                    {{ results_page.paginator.count }} application{{ results_page.paginator.count|pluralize }}
+                </div>
+            </div>
+
+            <ul class="results-list">
+                {% for r in results_page %}
+                <li class="result-item">
+                    <div class="result-title">
+                        <a href="{{ r.url }}" target="_blank" rel="noopener">
+                            {{ r.title }}
+                        </a>
+                    </div>
+                    {% if r.address %}
+                        <div class="result-address">{{ r.address }}</div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% if results_page.paginator.num_pages > 1 %}
+                <nav class="pagination">
+                    {% if results_page.has_previous %}
+                        <a class="page-link"
+                        href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">Prev</a>
+                    {% endif %}
+
+                    {% for num in results_page.paginator.page_range %}
+                        {% if num == results_page.number %}
+                            <span class="page-current">{{ num }}</span>
+                        {% elif num >= results_page.number|add:'-2' and num <= results_page.number|add:'2' %}
+                            <a class="page-link"
+                            href="?page={{ num }}&q={{ last_query|urlencode }}">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if results_page.has_next %}
+                        <a class="page-link"
+                        href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">Next</a>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>
