@@ -9,6 +9,7 @@ from .forms import AddressSearchForm, WatchForm
 from .scrapers import ealing, croydon
 
 from .models import PlanningWatch
+from django.contrib.auth.decorators import login_required
 
 
 SCRAPERS = {
@@ -121,6 +122,15 @@ def planning_search(request):
                 if borough_code != "ealing":
                     error = "Alerts are currently only supported for Ealing postcodes."
                 else:
+                    # Save (or reuse) the watch
+                    PlanningWatch.objects.get_or_create(
+                        email="cain@bridgeparkcapital.co.uk",   # or later: form field
+                        query=address,
+                        borough_code=borough_code,
+                        defaults={"active": True},
+                    )
+
+                    # Send confirmation email
                     send_mail(
                         subject="Planning alert set up",
                         message=(
@@ -128,7 +138,8 @@ def planning_search(request):
                             f"({borough_label})."
                         ),
                         from_email=getattr(
-                            settings, "DEFAULT_FROM_EMAIL",
+                            settings,
+                            "DEFAULT_FROM_EMAIL",
                             "alerts@bridgeparkcapital.co.uk",
                         ),
                         recipient_list=["cain@bridgeparkcapital.co.uk"],
@@ -137,6 +148,10 @@ def planning_search(request):
                     success = (
                         f"Alert created for {address}. A confirmation email has been sent."
                     )
+
+                # After creating alert, also run the search so results stay on screen
+                if borough_code == "ealing":
+                    all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
 
             # paginate for POST (both search + create_alert) if we have results and no fatal error
             if not error and all_results:
@@ -213,6 +228,10 @@ def create_watch(request):
         {"form": form, "message": message},
     )
 
-
 def watch_thanks(request):
     return render(request, "planning/watch_thanks.html")
+
+@login_required
+def watch_list(request):
+    watches = PlanningWatch.objects.order_by("-created_at")
+    return render(request, "planning/watch_list.html", {"watches": watches})

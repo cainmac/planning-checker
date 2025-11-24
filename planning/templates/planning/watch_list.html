@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Planning Alerts | BridgePark Capital</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+</head>
+
+<body>
+<div class="page">
+    <div class="card">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-subtitle">BridgePark Capital</div>
+                <div class="brand-title">Planning Alerts</div>
+            </div>
+            <div class="badge">Watchlist</div>
+        </header>
+
+        <!-- TOP ACTIONS -->
+        <div class="watchlist-top">
+            <p class="watchlist-text">
+                These are the planning alerts currently being tracked.
+            </p>
+            <a href="{% url 'planning_search' %}" class="primary-btn">
+                Back to Planning Checker
+            </a>
+        </div>
+
+        <hr class="divider">
+
+        {% if watches %}
+            <div class="results-header">
+                <div class="results-title">
+                    Active alerts
+                </div>
+                <div class="results-count">
+                    {{ watches|length }} alert{{ watches|length|pluralize }}
+                </div>
+            </div>
+
+            <div class="watch-table-wrapper">
+                <table class="watch-table">
+                    <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Address / Query</th>
+                        <th>Borough</th>
+                        <th>Active</th>
+                        <th>Created</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for w in watches %}
+                        <tr>
+                            <td>{{ w.email }}</td>
+                            <td>{{ w.query }}</td>
+                            <td>{{ w.borough_code|upper }}</td>
+                            <td>
+                                {% if w.active %}
+                                    <span class="status-pill status-active">Active</span>
+                                {% else %}
+                                    <span class="status-pill status-inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ w.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="hint">
+                There are no planning alerts yet. Use the Planning Checker to create an alert for
+                an address or postcode.
+            </p>
+        {% endif %}
+
+    </div>
+</div>
+</body>
+</html>

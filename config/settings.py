@@ -146,3 +146,6 @@ DEFAULT_FROM_EMAIL = "alerts@bridgeparkcapital.co.uk"
 EMAIL_FROM = "alerts@example.com"
 # In production, use an SMTP backend like below:
 # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/planning/watches/"
