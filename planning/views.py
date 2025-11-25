@@ -1,4 +1,5 @@
 import re
+import logging
 
 from django.core.mail import send_mail
 from django.conf import settings
@@ -11,6 +12,7 @@ from .scrapers import ealing, croydon
 from .models import PlanningWatch
 from django.contrib.auth.decorators import login_required
 
+logger = logging.getLogger(__name__)
 
 SCRAPERS = {
     "ealing": ealing.scrape,
@@ -141,8 +143,6 @@ def _run_search(address: str):
         None,                  # No Croydon manual URL
     )
 
-
-
 def planning_search(request):
     results_page = None
     error = None
@@ -156,57 +156,70 @@ def planning_search(request):
     if request.method == "POST":
         form = AddressSearchForm(request.POST)
 
-        if form.is_valid():
-            address = form.cleaned_data["address"].strip()
-            last_query = address
-            action = request.POST.get("action", "search")
+        try:
+            if form.is_valid():
+                address = form.cleaned_data["address"].strip()
+                last_query = address
+                action = request.POST.get("action", "search")
 
-            # Run search once (both search + create_alert use this)
-            all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
+                # Run search once (both search + create_alert use this)
+                all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
 
-            # ---------------------- CREATE ALERT ----------------------
-            if action == "create_alert":
+                # ---------------------- CREATE ALERT ----------------------
+                if action == "create_alert":
 
-                if borough_code != "ealing":
-                    error = "Alerts are currently only supported for Ealing postcodes."
-                else:
-                    # Save watch
-                    PlanningWatch.objects.get_or_create(
-                        email="cain@bridgeparkcapital.co.uk",
-                        query=address,
-                        borough_code=borough_code,
-                        defaults={"active": True},
-                    )
-
-                    # Try to send confirmation email safely
-                    try:
-                        send_mail(
-                            subject="Planning alert set up",
-                            message=f"A planning alert has been set up for '{address}' ({borough_label}).",
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=["cain@bridgeparkcapital.co.uk"],
-                            fail_silently=False,
-                        )
-                        success = f"Alert created for {address}. A confirmation email has been sent."
-
-                    except Exception as e:
-                        # Log and show softer message but DO NOT crash
-                        print("EMAIL ERROR:", e)
-                        success = (
-                            f"Alert created for {address}, but the confirmation email "
-                            f"could not be sent. Please check email settings."
+                    if borough_code != "ealing":
+                        error = "Alerts are currently only supported for Ealing postcodes."
+                    else:
+                        # Save watch
+                        PlanningWatch.objects.get_or_create(
+                            email="cain@bridgeparkcapital.co.uk",
+                            query=address,
+                            borough_code=borough_code,
+                            defaults={"active": True},
                         )
 
-                # Refresh the results again so the page stays populated
-                if borough_code == "ealing":
-                    all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
+                        # Try to send confirmation email safely
+                        try:
+                            send_mail(
+                                subject="Planning alert set up",
+                                message=(
+                                    f"A planning alert has been set up for '{address}' "
+                                    f"({borough_label})."
+                                ),
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                recipient_list=["cain@bridgeparkcapital.co.uk"],
+                                fail_silently=False,
+                            )
+                            success = (
+                                f"Alert created for {address}. A confirmation email has been sent."
+                            )
 
-            # Pagination after POST request
-            if not error and all_results:
-                paginator = Paginator(all_results, 20)
-                results_page = paginator.get_page(1)
+                        except Exception as e:
+                            logger.exception("Error sending planning alert email: %r", e)
+                            success = (
+                                f"Alert created for {address}, but the confirmation email "
+                                f"could not be sent. Please check email settings."
+                            )
 
-        else:
+                    # Refresh the results again so the page stays populated
+                    if borough_code == "ealing":
+                        all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
+
+                # Pagination after POST request
+                if not error and all_results:
+                    paginator = Paginator(all_results, 20)
+                    results_page = paginator.get_page(1)
+
+            else:
+                error = "Please enter a valid address or postcode."
+        except Exception as e:
+            # Catch any unexpected errors so we don't 500
+            logger.exception("Unhandled error in planning_search POST: %r", e)
+            error = (
+                "Something went wrong while processing your request. "
+                "The error has been logged."
+            )
             form = AddressSearchForm()
 
     # --------------------------- GET (pagination or blank) ---------------------------
