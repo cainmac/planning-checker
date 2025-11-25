@@ -28,11 +28,10 @@ ALLOWED_HOSTS = os.environ.get(
     "localhost,127.0.0.1"
 ).split(",")
 
-# For CSRF on Render
+# For CSRF on Render and local dev
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{host.strip()}"
-    for host in ALLOWED_HOSTS
-    if host.strip()
+    "https://planning-checker.onrender.com",
+    "https://*.onrender.com",
 ]
 
 # Application definition
