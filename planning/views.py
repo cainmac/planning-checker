@@ -140,7 +140,7 @@ def planning_search(request):
                         from_email=getattr(
                             settings,
                             "DEFAULT_FROM_EMAIL",
-                            "alerts@bridgeparkcapital.co.uk",
+                            "admin@astorholdings.com.au",
                         ),
                         recipient_list=["cain@bridgeparkcapital.co.uk"],
                         fail_silently=False,

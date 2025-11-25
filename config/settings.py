@@ -141,11 +141,24 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "alerts@bridgeparkcapital.co.uk"
-EMAIL_FROM = "alerts@example.com"
-# In production, use an SMTP backend like below:
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Email
+
+if DEBUG:
+    # Dev: print emails to console
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    # Prod: real SMTP (configure via env vars)
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.office365.com'
+    EMAIL_PORT = 587
+    EMAIL_HOST_USER = 'admin@astorholdings.com.au'
+    EMAIL_HOST_PASSWORD = 'REDACTED'
+    EMAIL_USE_TLS = True
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "admin@astorholdings.com.au",
+)
 
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/planning/watches/"
