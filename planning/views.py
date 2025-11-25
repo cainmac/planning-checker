@@ -192,29 +192,29 @@ def planning_search(request):
                                 fail_silently=False,
                             )
                             success = (
-                                f"Alert created for {address}. A confirmation email has been sent."
+                                f"Alert created for {address}. "
+                                f"A confirmation email has been sent."
                             )
-
                         except Exception as e:
+                            # Log error, but DO NOT crash
                             logger.exception("Error sending planning alert email: %r", e)
                             success = (
                                 f"Alert created for {address}, but the confirmation email "
                                 f"could not be sent. Please check email settings."
                             )
 
-                    # Refresh the results again so the page stays populated
+                    # Refresh results (so they stay on screen after alert creation)
                     if borough_code == "ealing":
                         all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
 
-                # Pagination after POST request
+                # Pagination after POST
                 if not error and all_results:
                     paginator = Paginator(all_results, 20)
                     results_page = paginator.get_page(1)
-
             else:
                 error = "Please enter a valid address or postcode."
         except Exception as e:
-            # Catch any unexpected errors so we don't 500
+            # Catch anything unexpected so the user never sees 500
             logger.exception("Unhandled error in planning_search POST: %r", e)
             error = (
                 "Something went wrong while processing your request. "
@@ -235,7 +235,6 @@ def planning_search(request):
                 paginator = Paginator(all_results, 20)
                 results_page = paginator.get_page(page_num)
 
-        # Prepopulate search bar if query exists
         if last_query:
             form = AddressSearchForm(initial={"address": last_query})
         else:
