@@ -66,34 +66,81 @@ def detect_borough_from_text(text: str):
 
 
 def _run_search(address: str):
-    """Shared search logic used by both GET (pagination) and POST."""
+    """
+    Shared search logic used by both GET (pagination) and POST actions.
+    Returns:
+        (all_results, borough_code, borough_label, error_message, croydon_manual_url)
+    """
     all_results = []
     error = None
     croydon_manual_url = None
+
+    # Detect borough from postcode
     borough_code, borough_label = detect_borough_from_text(address)
 
+    # ----------------- BOROUGH NOT SUPPORTED -----------------
     if not borough_code:
-        error = (
-            "Couldn't determine the borough from that postcode. "
-            "Right now this tool supports Ealing (UB1, UB2, UB5, UB6, W3, W5, W7, W13) "
-            "and Croydon (CR0, CR2, CR4, CR7, CR8)."
+        return (
+            [],
+            None,
+            None,
+            (
+                "Couldn't determine the borough from that postcode. "
+                "Right now this tool supports Ealing (UB1, UB2, UB5, UB6, "
+                "W3, W5, W7, W13) and Croydon (CR0, CR2, CR4, CR7, CR8)."
+            ),
+            None,
         )
-    elif borough_code == "croydon":
-        croydon_manual_url = "https://publicaccess3.croydon.gov.uk/online-applications/"
-        error = (
-            "The Croydon planning website blocks automated access, "
-            "so results can't be shown here. "
-            "Please use the Croydon public access site directly."
-        )
-    else:
-        scrape_fn = SCRAPERS.get(borough_code)
-        try:
-            all_results = scrape_fn(address)
-        except Exception as e:
-            error = "There was an error contacting the borough planning system."
-            print("SCRAPER ERROR:", repr(e))
 
-    return all_results, borough_code, borough_label, error, croydon_manual_url
+    # ----------------- CROYDON SPECIAL CASE -----------------
+    if borough_code == "croydon":
+        # User must manually search Croydon due to their bot-protection
+        return (
+            [],
+            "croydon",
+            borough_label,
+            (
+                "The Croydon planning website blocks automated access, "
+                "so results can't be shown here. "
+                "Please use the Croydon public access site directly."
+            ),
+            "https://publicaccess3.croydon.gov.uk/online-applications/",
+        )
+
+    # ----------------- VALID BOROUGH (EALING, etc.) -----------------
+    scrape_fn = SCRAPERS.get(borough_code)
+
+    if not scrape_fn:
+        return (
+            [],
+            borough_code,
+            borough_label,
+            "This borough is recognised but has no scraper configured.",
+            None,
+        )
+
+    try:
+        all_results = scrape_fn(address)
+
+    except Exception as exc:
+        print("SCRAPER ERROR:", repr(exc))  # appears in Render logs
+        return (
+            [],
+            borough_code,
+            borough_label,
+            "There was an error contacting the borough planning system.",
+            None,
+        )
+
+    # ----------------- SUCCESS -----------------
+    return (
+        all_results,
+        borough_code,
+        borough_label,
+        None,                  # No error
+        None,                  # No Croydon manual URL
+    )
+
 
 
 def planning_search(request):
@@ -103,66 +150,69 @@ def planning_search(request):
     borough_label = None
     last_query = None
     croydon_manual_url = None
-
     all_results = []
 
-    # ----------------- POST: search or create alert -----------------
+    # --------------------------- POST (search or create alert) ---------------------------
     if request.method == "POST":
         form = AddressSearchForm(request.POST)
+
         if form.is_valid():
             address = form.cleaned_data["address"].strip()
             last_query = address
             action = request.POST.get("action", "search")
 
-            # run the search once; we reuse the data for both paths
+            # Run search once (both search + create_alert use this)
             all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
 
+            # ---------------------- CREATE ALERT ----------------------
             if action == "create_alert":
-                # CREATE ALERT PATH
+
                 if borough_code != "ealing":
                     error = "Alerts are currently only supported for Ealing postcodes."
                 else:
-                    # Save (or reuse) the watch
+                    # Save watch
                     PlanningWatch.objects.get_or_create(
-                        email="cain@bridgeparkcapital.co.uk",   # or later: form field
+                        email="cain@bridgeparkcapital.co.uk",
                         query=address,
                         borough_code=borough_code,
                         defaults={"active": True},
                     )
 
-                    # Send confirmation email
-                    send_mail(
-                        subject="Planning alert set up",
-                        message=(
-                            f"A planning alert has been set up for '{address}' "
-                            f"({borough_label})."
-                        ),
-                        from_email=getattr(
-                            settings,
-                            "DEFAULT_FROM_EMAIL",
-                            "admin@astorholdings.com.au",
-                        ),
-                        recipient_list=["cain@bridgeparkcapital.co.uk"],
-                        fail_silently=False,
-                    )
-                    success = (
-                        f"Alert created for {address}. A confirmation email has been sent."
-                    )
+                    # Try to send confirmation email safely
+                    try:
+                        send_mail(
+                            subject="Planning alert set up",
+                            message=f"A planning alert has been set up for '{address}' ({borough_label}).",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=["cain@bridgeparkcapital.co.uk"],
+                            fail_silently=False,
+                        )
+                        success = f"Alert created for {address}. A confirmation email has been sent."
 
-                # After creating alert, also run the search so results stay on screen
+                    except Exception as e:
+                        # Log and show softer message but DO NOT crash
+                        print("EMAIL ERROR:", e)
+                        success = (
+                            f"Alert created for {address}, but the confirmation email "
+                            f"could not be sent. Please check email settings."
+                        )
+
+                # Refresh the results again so the page stays populated
                 if borough_code == "ealing":
                     all_results, borough_code, borough_label, error, croydon_manual_url = _run_search(address)
 
-            # paginate for POST (both search + create_alert) if we have results and no fatal error
+            # Pagination after POST request
             if not error and all_results:
                 paginator = Paginator(all_results, 20)
                 results_page = paginator.get_page(1)
 
-    # ----------------- GET: pagination / fresh page -----------------
+        else:
+            form = AddressSearchForm()
+
+    # --------------------------- GET (pagination or blank) ---------------------------
     else:
-        # If we're clicking a pagination link (?page=2&q=UB6+8JF)
         q = request.GET.get("q")
-        page_number = request.GET.get("page", 1)
+        page_num = request.GET.get("page", 1)
 
         if q:
             last_query = q
@@ -170,14 +220,15 @@ def planning_search(request):
 
             if not error and all_results:
                 paginator = Paginator(all_results, 20)
-                results_page = paginator.get_page(page_number)
+                results_page = paginator.get_page(page_num)
 
-        # build the search form (prefill address if we have a query)
+        # Prepopulate search bar if query exists
         if last_query:
             form = AddressSearchForm(initial={"address": last_query})
         else:
             form = AddressSearchForm()
 
+    # --------------------------- RESPONSE ---------------------------
     return render(
         request,
         "planning/search.html",
