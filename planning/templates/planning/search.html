@@ -22,21 +22,41 @@
             <div class="badge">Planning Intelligence</div>
         </header>
 
-        <!-- CREATE ALERT (TOP) -->
-        {% if last_query %}
+        <!-- TOP ACTIONS: CREATE ALERT (POST) + VIEW ALERTS -->
         <section class="alert-top">
-            <p>
-                Planning alerts for <strong>{{ last_query }}</strong>
-            </p>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="address" value="{{ last_query }}">
-                <button type="submit" name="action" value="create_alert" class="watch-btn">
-                    Create alert
-                </button>
-            </form>
+            <div>
+                {% if last_query %}
+                    <p class="hint">
+                        You can set up an alert for <strong>{{ last_query }}</strong>.
+                    </p>
+                {% else %}
+                    <p class="hint">
+                        Search first, then create an alert to monitor that address/postcode for new applications.
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="alert-top-actions">
+                {% if last_query %}
+                    <!-- IMPORTANT: This must be a POST to create the alert -->
+                    <form method="post" action="{% url 'planning_search' %}" style="margin:0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="address" value="{{ last_query }}">
+                        <button type="submit" name="action" value="create_alert" class="watch-btn">
+                            Create planning alert
+                        </button>
+                    </form>
+                {% else %}
+                    <button class="watch-btn" type="button" disabled title="Search first to enable alerts">
+                        Create planning alert
+                    </button>
+                {% endif %}
+
+                <a href="{% url 'watch_list' %}" class="text-link">
+                    View existing alerts
+                </a>
+            </div>
         </section>
-        {% endif %}
 
         {% if success %}
             <div class="success">{{ success }}</div>
@@ -106,7 +126,7 @@
                 <nav class="pagination">
                     {% if results_page.has_previous %}
                         <a class="page-link"
-                        href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">Prev</a>
+                           href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">Prev</a>
                     {% endif %}
 
                     {% for num in results_page.paginator.page_range %}
@@ -114,13 +134,13 @@
                             <span class="page-current">{{ num }}</span>
                         {% elif num >= results_page.number|add:'-2' and num <= results_page.number|add:'2' %}
                             <a class="page-link"
-                            href="?page={{ num }}&q={{ last_query|urlencode }}">{{ num }}</a>
+                               href="?page={{ num }}&q={{ last_query|urlencode }}">{{ num }}</a>
                         {% endif %}
                     {% endfor %}
 
                     {% if results_page.has_next %}
                         <a class="page-link"
-                        href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">Next</a>
+                           href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">Next</a>
                     {% endif %}
                 </nav>
             {% endif %}
