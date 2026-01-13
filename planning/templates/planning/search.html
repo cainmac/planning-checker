@@ -22,55 +22,70 @@
             <div class="badge">Planning Intelligence</div>
         </header>
 
-        <!-- TOP ACTIONS: CREATE ALERT (POST) + VIEW ALERTS -->
+        <!-- TOP ACTION BAR -->
         <section class="alert-top">
             <div>
                 {% if last_query %}
                     <p class="hint">
-                        You can set up an alert for <strong>{{ last_query }}</strong>.
+                        Viewing planning applications for
+                        <strong>{{ last_query }}</strong>.
                     </p>
                 {% else %}
                     <p class="hint">
-                        Search first, then create an alert to monitor that address/postcode for new applications.
+                        Search an address or postcode, then set up an alert to monitor future applications.
                     </p>
                 {% endif %}
             </div>
 
             <div class="alert-top-actions">
                 {% if last_query %}
-                    <!-- IMPORTANT: This must be a POST to create the alert -->
+                    <!-- CREATE ALERT (POST) -->
                     <form method="post" action="{% url 'planning_search' %}" style="margin:0;">
                         {% csrf_token %}
                         <input type="hidden" name="address" value="{{ last_query }}">
-                        <button type="submit" name="action" value="create_alert" class="watch-btn">
+                        <button type="submit"
+                                name="action"
+                                value="create_alert"
+                                class="watch-btn">
                             Create planning alert
                         </button>
                     </form>
                 {% else %}
-                    <button class="watch-btn" type="button" disabled title="Search first to enable alerts">
+                    <button class="watch-btn" type="button" disabled
+                            title="Search first to enable alerts">
                         Create planning alert
                     </button>
                 {% endif %}
 
                 <a href="{% url 'watch_list' %}" class="text-link">
-                    View existing alerts
+                    View alerts
+                </a>
+
+                <!-- BACK TO HOME -->
+                <a href="{% url 'home' %}" class="text-link">
+                    Home
                 </a>
             </div>
         </section>
 
         {% if success %}
-            <div class="success">{{ success }}</div>
+            <div class="success">
+                {{ success }}
+            </div>
         {% endif %}
 
-        <!-- SEARCH FORM (ALWAYS VISIBLE) -->
+        <!-- SEARCH FORM -->
         <form method="post" class="form">
             {% csrf_token %}
             <label for="{{ form.address.id_for_label }}" class="field-label">
                 Address or postcode
             </label>
+
             <div class="field-row">
                 {{ form.address }}
-                <button type="submit" name="action" value="search">Search</button>
+                <button type="submit" name="action" value="search">
+                    Search
+                </button>
             </div>
 
             <p class="hint">
@@ -83,7 +98,9 @@
                 {{ error }}
                 {% if croydon_manual_url %}
                     <br>
-                    <a href="{{ croydon_manual_url }}" target="_blank" rel="noopener">
+                    <a href="{{ croydon_manual_url }}"
+                       target="_blank"
+                       rel="noopener">
                         Open Croydon planning search
                     </a>
                 {% endif %}
@@ -98,27 +115,36 @@
                 <div class="results-title">
                     Results
                     {% if borough_label %}
-                        <span class="results-borough">({{ borough_label }})</span>
+                        <span class="results-borough">
+                            ({{ borough_label }})
+                        </span>
                     {% endif %}
                 </div>
+
                 <div class="results-count">
-                    Page {{ results_page.number }} of {{ results_page.paginator.num_pages }} —
-                    {{ results_page.paginator.count }} application{{ results_page.paginator.count|pluralize }}
+                    Page {{ results_page.number }}
+                    of {{ results_page.paginator.num_pages }} —
+                    {{ results_page.paginator.count }}
+                    application{{ results_page.paginator.count|pluralize }}
                 </div>
             </div>
 
             <ul class="results-list">
                 {% for r in results_page %}
-                <li class="result-item">
-                    <div class="result-title">
-                        <a href="{{ r.url }}" target="_blank" rel="noopener">
-                            {{ r.title }}
-                        </a>
-                    </div>
-                    {% if r.address %}
-                        <div class="result-address">{{ r.address }}</div>
-                    {% endif %}
-                </li>
+                    <li class="result-item">
+                        <div class="result-title">
+                            <a href="{{ r.url }}"
+                               target="_blank"
+                               rel="noopener">
+                                {{ r.title }}
+                            </a>
+                        </div>
+                        {% if r.address %}
+                            <div class="result-address">
+                                {{ r.address }}
+                            </div>
+                        {% endif %}
+                    </li>
                 {% endfor %}
             </ul>
 
@@ -126,25 +152,33 @@
                 <nav class="pagination">
                     {% if results_page.has_previous %}
                         <a class="page-link"
-                           href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">Prev</a>
+                           href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">
+                            Prev
+                        </a>
                     {% endif %}
 
                     {% for num in results_page.paginator.page_range %}
                         {% if num == results_page.number %}
                             <span class="page-current">{{ num }}</span>
-                        {% elif num >= results_page.number|add:'-2' and num <= results_page.number|add:'2' %}
+                        {% elif num >= results_page.number|add:'-2'
+                                and num <= results_page.number|add:'2' %}
                             <a class="page-link"
-                               href="?page={{ num }}&q={{ last_query|urlencode }}">{{ num }}</a>
+                               href="?page={{ num }}&q={{ last_query|urlencode }}">
+                                {{ num }}
+                            </a>
                         {% endif %}
                     {% endfor %}
 
                     {% if results_page.has_next %}
                         <a class="page-link"
-                           href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">Next</a>
+                           href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">
+                            Next
+                        </a>
                     {% endif %}
                 </nav>
             {% endif %}
         {% endif %}
+
     </div>
 </div>
 </body>

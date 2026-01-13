@@ -6,6 +6,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import render
 
+from django.db import transaction
+from django.core.mail import send_mail
+
 from .forms import AddressSearchForm
 from .models import PlanningWatch
 from .scrapers import ealing, croydon
@@ -126,20 +129,16 @@ def _run_search(address: str):
 
 
 def planning_search(request):
-    """
-    Single page:
-    - POST action=search -> run search
-    - POST action=create_alert -> save watch + send email + re-run search (so results stay visible)
-    - GET supports pagination using ?q=...&page=...
-    """
     results_page = None
     error = None
     success = None
     borough_label = None
     last_query = None
     croydon_manual_url = None
-    all_results = []
 
+    # -----------------------------
+    # POST: search OR create alert
+    # -----------------------------
     if request.method == "POST":
         form = AddressSearchForm(request.POST)
         if form.is_valid():
@@ -147,17 +146,15 @@ def planning_search(request):
             last_query = address
             action = request.POST.get("action", "search")
 
-            # 1) If user clicked "Create alert"
-            if action == "create_alert":
-                borough_code, borough_label = detect_borough_from_text(address)
+            # Always detect borough for BOTH actions
+            borough_code, borough_label = detect_borough_from_text(address)
 
+            # ---- CREATE ALERT ----
+            if action == "create_alert":
                 if borough_code != "ealing":
-                    error = (
-                        "Alerts are currently only supported for Ealing postcodes "
-                        "(UB1, UB2, UB5, UB6, W3, W5, W7, W13)."
-                    )
+                    error = "Alerts are currently only supported for Ealing postcodes."
                 else:
-                    # Create/reuse watch
+                    # 1) DB write FIRST
                     PlanningWatch.objects.get_or_create(
                         email="cain@bridgeparkcapital.co.uk",
                         query=address,
@@ -165,70 +162,50 @@ def planning_search(request):
                         defaults={"active": True},
                     )
 
-                    # Send confirmation email (safe wrapper handles logging)
+                    success = f"Alert created for {address}."
+
+                    # 2) Email SECOND (best-effort)
                     try:
-                        send_planning_alert_email(
-                            address=address,
-                            borough_label=BOROUGH_LABELS.get(borough_code, "London Borough of Ealing"),
-                            recipient_email="cain@bridgeparkcapital.co.uk",
+                        send_mail(
+                            subject="Planning alert set up",
+                            message=f"A planning alert has been set up for '{address}' ({borough_label}).",
+                            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "admin@astorholdings.com.au"),
+                            recipient_list=["cain@bridgeparkcapital.co.uk"],
+                            fail_silently=False,
                         )
-                        success = f"Alert created for {address}. A confirmation email has been sent."
                     except Exception as exc:
-                        logger.exception("Error sending alert email: %r", exc)
-                        success = f"Alert created for {address}, but email failed to send."
+                        logger.exception("Email send failed (non-fatal): %r", exc)
 
-                # Re-run search so results remain on screen
-                (
-                    all_results,
-                    _code,
-                    borough_label_from_search,
-                    search_error,
-                    croydon_manual_url,
-                ) = _run_search(address)
-
-                if borough_label_from_search:
-                    borough_label = borough_label_from_search
-                if not error and search_error:
+                # After creating alert, keep results visible by running search too
+                all_results, _, borough_label, search_error, croydon_manual_url = _run_search(address)
+                if search_error:
                     error = search_error
+                elif all_results:
+                    paginator = Paginator(all_results, 20)
+                    results_page = paginator.get_page(1)
 
-            # 2) Normal search
+            # ---- SEARCH ----
             else:
-                (
-                    all_results,
-                    _code,
-                    borough_label,
-                    error,
-                    croydon_manual_url,
-                ) = _run_search(address)
+                all_results, _, borough_label, error, croydon_manual_url = _run_search(address)
+                if not error and all_results:
+                    paginator = Paginator(all_results, 20)
+                    results_page = paginator.get_page(1)
 
-            if not error and all_results:
-                paginator = Paginator(all_results, 20)
-                results_page = paginator.get_page(1)
-
+    # -----------------------------
+    # GET: pagination / load page
+    # -----------------------------
     else:
-        # GET pagination: /planning/?q=UB6+8JF&page=2
         q = request.GET.get("q")
-        page_num = request.GET.get("page", 1)
+        page_number = request.GET.get("page", 1)
 
         if q:
             last_query = q
-            (
-                all_results,
-                _code,
-                borough_label,
-                error,
-                croydon_manual_url,
-            ) = _run_search(q)
-
+            all_results, _, borough_label, error, croydon_manual_url = _run_search(q)
             if not error and all_results:
                 paginator = Paginator(all_results, 20)
-                results_page = paginator.get_page(page_num)
+                results_page = paginator.get_page(page_number)
 
-        # Keep the search input filled when paginating
-        if last_query:
-            form = AddressSearchForm(initial={"address": last_query})
-        else:
-            form = AddressSearchForm()
+        form = AddressSearchForm(initial={"address": last_query} if last_query else None)
 
     return render(
         request,
