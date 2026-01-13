@@ -5,7 +5,8 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import render
-
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.core.mail import send_mail
 
@@ -13,6 +14,8 @@ from .forms import AddressSearchForm
 from .models import PlanningWatch
 from .scrapers import ealing, croydon
 from .tasks import send_planning_alert_email
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -230,3 +233,33 @@ def watch_list(request):
 
 def watch_thanks(request):
     return render(request, "planning/watch_thanks.html")
+
+@require_POST
+def create_alert(request):
+    address = (request.POST.get("address") or "").strip()
+    email = (request.POST.get("email") or "cain@bridgeparkcapital.co.uk").strip()
+
+    borough_code, borough_label = detect_borough_from_text(address)
+    if borough_code != "ealing":
+        return JsonResponse({"ok": False, "error": "Alerts are only supported for Ealing postcodes."}, status=400)
+
+    PlanningWatch.objects.get_or_create(
+        email=email,
+        query=address,
+        borough_code=borough_code,
+        defaults={"active": True},
+    )
+
+    # Best-effort email (don’t crash)
+    try:
+        send_mail(
+            subject="Planning alert set up",
+            message=f"A planning alert has been set up for '{address}' ({borough_label}).",
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "admin@astorholdings.com.au"),
+            recipient_list=[email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+
+    return JsonResponse({"ok": True, "message": f"Alert created for {address}."})
