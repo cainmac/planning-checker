@@ -1,47 +1,78 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>BPC Planning Checker | BridgePark Capital</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "base.html" %}
+{% load static %}
 
-  {% load static %}
-  <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-</head>
+{% block title %}Planning Checker | {{ BRAND_NAME }}{% endblock %}
+{% block page_title %}Planning Checker{% endblock %}
 
-<body>
-  <div class="page">
-    <div class="card">
+{% block nav_actions %}
+  <a class="btn btn--ghost" href="{% url 'home' %}">Home</a>
+  <a class="btn btn--ghost" href="{% url 'watch_list' %}">Alerts</a>
+{% endblock %}
 
-      <!-- HEADER -->
-      <header class="header">
-        <div class="brand">
-          <div class="brand-subtitle">BridgePark Capital</div>
-          <div class="brand-title">BPC Planning Checker</div>
-        </div>
+{% block content %}
 
-        <div class="header-actions">
-          <a class="btn btn--ghost" href="{% url 'home' %}">Home</a>
-          <div class="badge">Planning Intelligence</div>
-        </div>
-      </header>
+  <div class="bg-ambient" aria-hidden="true"></div>
 
-      <!-- TOP ACTIONS -->
-      <section class="alert-top">
+  <div class="planning-shell">
 
-        <!-- Left: explainer + email input -->
-        <div class="alert-top-left">
-          {% if last_query %}
-            <p class="hint hint--lead">
-              Create an alert for <strong>{{ last_query }}</strong> and we’ll monitor it for new applications.
+    <!-- TOP: editorial header -->
+    <header class="pc-header">
+      <div class="pc-title">
+        <h1 class="pc-h1">Planning Checker</h1>
+        <p class="pc-lede">Search fast. Skim history. Set alerts in one click.</p>
+      </div>
+    </header>
+
+    <main class="pc-grid">
+
+      <!-- LEFT: search + alerts -->
+      <aside class="pc-side">
+
+        <section class="pc-card pc-card--primary">
+          <div class="pc-card-h">
+            <div>
+              <h2 class="pc-h2">Search</h2>
+              <p class="pc-sub">Address, postcode, or anything close.</p>
+            </div>
+            <span class="pc-badge">Primary</span>
+          </div>
+
+          <form method="post" class="pc-form">
+            {% csrf_token %}
+
+            <label for="{{ form.address.id_for_label }}" class="field-label">
+              Address or postcode
+            </label>
+
+            <div class="pc-search-row">
+              {{ form.address }}
+              <button type="submit" name="action" value="search" class="btn btn--primary pc-search-btn">
+                Search
+              </button>
+            </div>
+
+            <p class="hint">
+              Try: <code>UB6 8JF</code> or <code>249 Conway Crescent</code>.
             </p>
-          {% else %}
-            <p class="hint hint--lead">
-              Search first, then create an alert to monitor that address/postcode for new applications.
-            </p>
-          {% endif %}
+          </form>
+        </section>
 
-          <div class="alert-email">
+        <section class="pc-card">
+          <div class="pc-card-h">
+            <div>
+              <h2 class="pc-h2">Alerts</h2>
+              <p class="pc-sub">
+                {% if last_query %}
+                  Monitor <strong class="pc-ink">{{ last_query }}</strong> for new applications.
+                {% else %}
+                  Search first to enable alert creation.
+                {% endif %}
+              </p>
+            </div>
+            <span class="pc-badge pc-badge--muted">Secondary</span>
+          </div>
+
+          <div class="pc-form">
             <label class="field-label" for="alert-email">Alert email</label>
             <input
               id="alert-email"
@@ -53,204 +84,192 @@
               autocomplete="email"
             >
             <p class="hint">We’ll email this address when new applications are found.</p>
+
+            <div class="pc-actions">
+              {% if last_query %}
+                <form id="create-alert-form" method="post" action="{% url 'planning_create_alert' %}" style="margin:0;">
+                  {% csrf_token %}
+                  <input type="hidden" name="address" value="{{ last_query }}">
+                  <button type="submit" class="btn btn--primary btn--wide">
+                    Create alert
+                  </button>
+                </form>
+              {% else %}
+                <button class="btn btn--primary btn--wide" type="button" disabled title="Search first to enable alerts">
+                  Create alert
+                </button>
+              {% endif %}
+
+              <a href="{% url 'watch_list' %}" class="btn btn--ghost btn--wide">
+                View existing alerts
+              </a>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Right: buttons -->
-        <div class="alert-top-actions">
-          {% if last_query %}
-            <!-- AJAX POST: create alert (NO page refresh) -->
-            <form id="create-alert-form" method="post" action="{% url 'planning_create_alert' %}" style="margin:0;">
-              {% csrf_token %}
-              <input type="hidden" name="address" value="{{ last_query }}">
-              <button type="submit" class="btn btn--primary btn--wide">
-                Create planning alert
-              </button>
-            </form>
+        {% if success %}
+          <div class="success">{{ success }}</div>
+        {% endif %}
+
+        {% if error %}
+          <div class="error">
+            {{ error }}
+            {% if croydon_manual_url %}
+              <br>
+              <a href="{{ croydon_manual_url }}" target="_blank" rel="noopener">Open Croydon planning search</a>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      </aside>
+
+      <!-- RIGHT: results -->
+      <section class="pc-main">
+        <div class="pc-card pc-card--results">
+
+          <!-- NEW: strip nested here (not floating) -->
+          <div class="pc-strip" aria-label="Current search summary">
+            {% if borough_label %}
+              <div class="pc-pill">
+                <span class="pc-pill-k">Borough</span>
+                <span class="pc-pill-v">{{ borough_label }}</span>
+              </div>
+            {% endif %}
+
+            {% if results_page %}
+              <div class="pc-pill">
+                <span class="pc-pill-k">Results</span>
+                <span class="pc-pill-v">{{ results_page.paginator.count }}</span>
+              </div>
+            {% endif %}
+
+            {% if last_query %}
+              <div class="pc-pill pc-pill--wide" title="{{ last_query }}">
+                <span class="pc-pill-k">Query</span>
+                <span class="pc-pill-v pc-truncate">{{ last_query }}</span>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="pc-results-head">
+            <div>
+              <h2 class="pc-h2 pc-h2--results">Results</h2>
+              <p class="pc-sub">
+                {% if results_page %}
+                  Page {{ results_page.number }} of {{ results_page.paginator.num_pages }} —
+                  {{ results_page.paginator.count }} application{{ results_page.paginator.count|pluralize }}
+                {% else %}
+                  Run a search to see planning applications here.
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          {% if results_page %}
+            <ul class="pc-results">
+              {% for r in results_page %}
+                <li class="pc-result">
+                  <a class="pc-result-link" href="{{ r.url }}" target="_blank" rel="noopener">
+                    <span class="pc-result-title">{{ r.title }}</span>
+                    <span class="pc-result-cta" aria-hidden="true">↗</span>
+                  </a>
+
+                  {% if r.address %}
+                    <div class="pc-result-meta">{{ r.address }}</div>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+
+            {% if results_page.paginator.num_pages > 1 %}
+              <nav class="pagination" aria-label="Results pages">
+                {% if results_page.has_previous %}
+                  <a class="page-link" href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">Prev</a>
+                {% endif %}
+
+                {% for num in results_page.paginator.page_range %}
+                  {% if num == results_page.number %}
+                    <span class="page-current">{{ num }}</span>
+                  {% elif num >= results_page.number|add:'-2' and num <= results_page.number|add:'2' %}
+                    <a class="page-link" href="?page={{ num }}&q={{ last_query|urlencode }}">{{ num }}</a>
+                  {% endif %}
+                {% endfor %}
+
+                {% if results_page.has_next %}
+                  <a class="page-link" href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">Next</a>
+                {% endif %}
+              </nav>
+            {% endif %}
           {% else %}
-            <button class="btn btn--primary btn--wide" type="button" disabled title="Search first to enable alerts">
-              Create planning alert
-            </button>
+            <div class="pc-empty">
+              <div class="pc-empty-kicker">Tip</div>
+              <div class="pc-empty-title">Search an address to pull up recent applications.</div>
+              <div class="pc-empty-text">Then hit <strong>Create alert</strong> to monitor it.</div>
+            </div>
           {% endif %}
-
-          <a href="{% url 'watch_list' %}" class="btn btn--ghost btn--wide">
-            View existing alerts
-          </a>
         </div>
       </section>
 
-      <!-- SUCCESS/ERROR (server-side fallback) -->
-      {% if success %}
-        <div class="success">{{ success }}</div>
-      {% endif %}
-
-      {% if error %}
-        <div class="error">
-          {{ error }}
-          {% if croydon_manual_url %}
-            <br>
-            <a href="{{ croydon_manual_url }}" target="_blank" rel="noopener">
-              Open Croydon planning search
-            </a>
-          {% endif %}
-        </div>
-      {% endif %}
-
-      <hr class="divider">
-
-      <!-- SEARCH FORM -->
-      <form method="post" class="form">
-        {% csrf_token %}
-        <label for="{{ form.address.id_for_label }}" class="field-label">
-          Address or postcode
-        </label>
-
-        <div class="field-row">
-          {# Best if your Django field has widget attrs class="input" #}
-          {{ form.address }}
-          <button type="submit" name="action" value="search" class="btn btn--primary">
-            Search
-          </button>
-        </div>
-
-        <p class="hint">
-          Example: <code>UB6 8JF</code> or <code>249 Conway Crescent</code>.
-        </p>
-      </form>
-
-      <!-- RESULTS -->
-      {% if results_page %}
-        <div class="results-header">
-          <div class="results-title">
-            Results
-            {% if borough_label %}
-              <span class="results-borough">({{ borough_label }})</span>
-            {% endif %}
-          </div>
-          <div class="results-count">
-            Page {{ results_page.number }} of {{ results_page.paginator.num_pages }} —
-            {{ results_page.paginator.count }} application{{ results_page.paginator.count|pluralize }}
-          </div>
-        </div>
-
-        <ul class="results-list">
-          {% for r in results_page %}
-            <li class="result-item">
-              <div class="result-title">
-                <a href="{{ r.url }}" target="_blank" rel="noopener">
-                  {{ r.title }}
-                </a>
-              </div>
-              {% if r.address %}
-                <div class="result-address">{{ r.address }}</div>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-
-        {% if results_page.paginator.num_pages > 1 %}
-          <nav class="pagination" aria-label="Results pages">
-            {% if results_page.has_previous %}
-              <a class="page-link"
-                 href="?page={{ results_page.previous_page_number }}&q={{ last_query|urlencode }}">
-                Prev
-              </a>
-            {% endif %}
-
-            {% for num in results_page.paginator.page_range %}
-              {% if num == results_page.number %}
-                <span class="page-current">{{ num }}</span>
-              {% elif num >= results_page.number|add:'-2' and num <= results_page.number|add:'2' %}
-                <a class="page-link"
-                   href="?page={{ num }}&q={{ last_query|urlencode }}">
-                  {{ num }}
-                </a>
-              {% endif %}
-            {% endfor %}
-
-            {% if results_page.has_next %}
-              <a class="page-link"
-                 href="?page={{ results_page.next_page_number }}&q={{ last_query|urlencode }}">
-                Next
-              </a>
-            {% endif %}
-          </nav>
-        {% endif %}
-      {% endif %}
-
-    </div>
+    </main>
   </div>
 
-  <!-- TOAST -->
   <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
 
-  <script>
-    // --- Toast helper ---
-    function showToast(message, type = "success") {
-      const el = document.getElementById("toast");
-      el.textContent = message;
-      el.className = `toast toast--${type} toast--show`;
-      window.clearTimeout(window.__toastTimer);
-      window.__toastTimer = window.setTimeout(() => {
-        el.className = `toast toast--${type}`;
-      }, 3500);
-    }
+{% endblock %}
 
-    // --- CSRF cookie helper ---
-    function getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(";").shift();
-      return "";
-    }
+{% block extra_js %}
+<script>
+  function showToast(message, type = "success") {
+    const el = document.getElementById("toast");
+    el.textContent = message;
+    el.className = `toast toast--${type} toast--show`;
+    window.clearTimeout(window.__toastTimer);
+    window.__toastTimer = window.setTimeout(() => {
+      el.className = `toast toast--${type}`;
+    }, 3500);
+  }
 
-    // --- AJAX create alert ---
-    const alertForm = document.getElementById("create-alert-form");
-    if (alertForm) {
-      alertForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return "";
+  }
 
-        const formData = new FormData(alertForm);
-        const emailInput = document.getElementById("alert-email");
+  const alertForm = document.getElementById("create-alert-form");
+  if (alertForm) {
+    alertForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-        if (emailInput && emailInput.value) {
-          formData.set("email", emailInput.value.trim());
-        }
+      const formData = new FormData(alertForm);
+      const emailInput = document.getElementById("alert-email");
 
-        // Basic client validation
-        if (!formData.get("address")) {
-          showToast("Missing address/postcode.", "error");
-          return;
-        }
-        if (!formData.get("email")) {
-          showToast("Please enter an email for alerts.", "error");
-          return;
-        }
+      if (emailInput && emailInput.value) {
+        formData.set("email", emailInput.value.trim());
+      }
 
-        try {
-          const resp = await fetch(alertForm.action, {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": getCookie("csrftoken"),
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            body: formData
-          });
+      if (!formData.get("address")) return showToast("Missing address/postcode.", "error");
+      if (!formData.get("email")) return showToast("Please enter an email for alerts.", "error");
 
-          let data = {};
-          try { data = await resp.json(); } catch (_) {}
+      try {
+        const resp = await fetch(alertForm.action, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: formData
+        });
 
-          if (!resp.ok || !data.ok) {
-            showToast(data.error || "Could not create alert.", "error");
-            return;
-          }
+        let data = {};
+        try { data = await resp.json(); } catch (_) {}
 
-          showToast(data.message || "Alert created.", "success");
-        } catch (err) {
-          showToast("Network error creating alert.", "error");
-        }
-      });
-    }
-  </script>
-</body>
-</html>
+        if (!resp.ok || !data.ok) return showToast(data.error || "Could not create alert.", "error");
+        showToast(data.message || "Alert created.", "success");
+      } catch (err) {
+        showToast("Network error creating alert.", "error");
+      }
+    });
+  }
+</script>
+{% endblock %}

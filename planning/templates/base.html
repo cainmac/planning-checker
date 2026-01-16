@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="site">
+  <!-- ambient background -->
+  <div class="bg-ambient" aria-hidden="true"></div>
+
+  <header class="site-nav" role="banner">
+    <div class="site-nav-inner">
+      <a class="site-brand" href="{% url 'home' %}">
+        <div class="site-brand-subtitle">{{ BRAND_NAME }}</div>
+      </a>
+
+      <nav class="site-nav-links" aria-label="Primary">
+        {% block nav_actions %}
+          <a class="btn btn--ghost" href="{% url 'home' %}">Home</a>
+          <a class="btn btn--ghost" href="{% url 'watch_list' %}">Alerts</a>
+        {% endblock %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="site-main" role="main">
+    <div class="page">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="site-footer-inner">
+      <div>
+        <strong>{{ BRAND_NAME|default:"BridgePark Capital" }}</strong>
+        <span class="site-footer-muted">· {{ BRAND_TAGLINE|default:"Planning Checker" }}</span>
+      </div>
+      <div class="site-footer-muted">© {% now "Y" %}</div>
+    </div>
+  </footer>
+
+  {% block extra_js %}{% endblock %}
+</body>
+
+</html>
+

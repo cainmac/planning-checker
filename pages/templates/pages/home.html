@@ -1,60 +1,52 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>BridgePark Capital | Planning Tools</title>
+{% extends "base.html" %}
+{% load static %}
 
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-</head>
+{% block nav_actions %}
+    <a class="primary-btn" href="{% url 'planning_search' %}">
+    Planning Checker
+    </a>
+    <a class="primary-btn" href="{% url 'watch_list' %}">
+    Alerts
+    </a>
+    <a class="btn btn--ghost" href="/admin/login/">Login</a>
 
-<body>
-<div class="page">
-    <div class="card home-card">
+{% endblock %}
 
-        <!-- HEADER -->
-        <header class="header">
-            <div class="brand">
-                <div class="brand-subtitle">BRIDGEPARK CAPITAL</div>
-                <div class="brand-title">Planning Intelligence Tools</div>
-            </div>
-            <div class="badge">Tools</div>
-        </header>
+{% block content %}
+  <div class="card home-card">
 
-        <h1 class="home-title">Welcome</h1>
+    <h1 class="home-title">Welcome</h1>
 
-        <p class="home-description">
-            Explore BridgePark Capital’s planning intelligence suite — designed for  
-            fast due diligence, acquisitions support, and automated planning monitoring.
-        </p>
+    <p class="home-description">
+      Explore {{ BRAND_NAME }}’s planning intelligence suite — designed for
+      fast due diligence, acquisitions support, and automated planning monitoring.
+    </p>
 
-        <!-- TOOL CARD 1 – Planning Checker -->
-        <div class="home-section">
-            <h2 class="home-section-title">BPC Planning Checker</h2>
-            <p class="home-section-text">
-                Search a UK address or postcode to view planning history and  
-                set up real-time alerts for new applications.
-            </p>
+    <!-- TOOL CARD 1 -->
+    <div class="home-section">
+      <h2 class="home-section-title">{{ BRAND_SHORT_NAME }} Planning Checker</h2>
+      <p class="home-section-text">
+        Search a UK address or postcode to view planning history and
+        set up real-time alerts for new applications.
+      </p>
 
-            <a class="primary-btn" href="{% url 'planning_search' %}">
-                Open Planning Checker
-            </a>
-        </div>
-
-        <!-- TOOL CARD 2 – Planning Alerts Dashboard -->
-        <div class="home-section">
-            <h2 class="home-section-title">Planning Alerts Dashboard</h2>
-            <p class="home-section-text">
-                View all active planning alerts being tracked across BridgePark Capital.  
-                Monitor applications and manage alert settings in one place.
-            </p>
-
-            <a class="primary-btn" href="{% url 'watch_list' %}">
-                View Alerts Dashboard
-            </a>
-        </div>
-
+      <a class="primary-btn" href="{% url 'planning_search' %}">
+        Open Planning Checker
+      </a>
     </div>
-</div>
-</body>
-</html>
+
+    <!-- TOOL CARD 2 -->
+    <div class="home-section">
+      <h2 class="home-section-title">Planning Alerts Dashboard</h2>
+      <p class="home-section-text">
+        View all active planning alerts being tracked across BridgePark Capital.
+        Monitor applications and manage alert settings in one place.
+      </p>
+
+      <a class="primary-btn" href="{% url 'watch_list' %}">
+        View Alerts Dashboard
+      </a>
+    </div>
+
+  </div>
+{% endblock %}

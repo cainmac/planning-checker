@@ -65,13 +65,14 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "planning" / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'config.context_processors.branding',
             ],
         },
     },
@@ -169,3 +170,11 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/planning/watches/"
+
+# ==========================
+# BRANDING
+# ==========================
+
+BRAND_NAME = "Astor Holdings"
+BRAND_TAGLINE = "Planning Intelligence"
+BRAND_SHORT_NAME = "Astor"
