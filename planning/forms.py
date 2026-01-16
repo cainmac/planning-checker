@@ -5,16 +5,21 @@ BOROUGH_CHOICES = [
     ("croydon", "Croydon"),
     # add more later
 ]
+
+
 class AddressSearchForm(forms.Form):
     address = forms.CharField(
         label="Address or postcode",
         max_length=255,
         widget=forms.TextInput(
             attrs={
+                "class": "input",
                 "placeholder": "e.g. UB6 8JF or 249 Conway Crescent",
+                "autocomplete": "postal-code",
             }
         ),
     )
+
 
 class PlanningWatchForm(forms.Form):
     address = forms.CharField(
@@ -22,7 +27,9 @@ class PlanningWatchForm(forms.Form):
         max_length=255,
         widget=forms.TextInput(
             attrs={
+                "class": "input",
                 "placeholder": "e.g. UB6 8JF or 249 Conway Crescent",
+                "autocomplete": "postal-code",
             }
         ),
     )
