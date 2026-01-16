@@ -577,3 +577,10 @@ select:focus {
     align-items: flex-start;
   }
 }
+
+/* =========================================
+   GLOBAL: REMOVE ALL ROUNDING EVERYWHERE
+   ========================================= */
+* {
+  border-radius: 0 !important;
+}
