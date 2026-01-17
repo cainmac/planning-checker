@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Delete search</h1>
+<p>Delete <strong>{{ search.name }}</strong>?</p>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit">Yes, delete</button>
+  <a href="{% url 'property:search_list' %}">Cancel</a>
+</form>
+{% endblock %}

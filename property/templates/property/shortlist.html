@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Shortlist</h1>
+<ul>
+  {% for item in items %}
+    <li>
+      <a href="{{ item.listing.canonical_url }}" target="_blank" rel="noopener">
+        {{ item.listing.canonical_url }}
+      </a>
+      <a href="{% url 'property:shortlist_remove' item.listing.id %}">Remove</a>
+      {% if item.notes %}<div>{{ item.notes }}</div>{% endif %}
+    </li>
+  {% empty %}
+    <li>No shortlisted properties yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

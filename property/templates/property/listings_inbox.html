@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Listings inbox</h1>
+
+<form method="get">
+  <label>Portal</label>
+  <select name="portal">
+    <option value="">All</option>
+    <option value="rightmove">Rightmove</option>
+    <option value="zoopla">Zoopla</option>
+  </select>
+
+  <label>Beds >=</label>
+  <input type="number" name="beds_min" value="{{ request.GET.beds_min }}">
+
+  <label>Baths >=</label>
+  <input type="number" name="baths_min" value="{{ request.GET.baths_min }}">
+
+  <label>Price <=</label>
+  <input type="number" name="price_max" value="{{ request.GET.price_max }}">
+
+  <button type="submit">Filter</button>
+</form>
+
+<hr>
+
+<ul>
+  {% for l in listings %}
+    <li>
+      <a href="{{ l.canonical_url }}" target="_blank" rel="noopener">{{ l.canonical_url }}</a>
+      — {{ l.get_portal_display }}
+      {% if l.price %}— £{{ l.price }}{% endif %}
+      {% if l.bedrooms %}— {{ l.bedrooms }} bed{% endif %}
+      {% if l.bathrooms %}— {{ l.bathrooms }} bath{% endif %}
+
+      {% if l.id in shortlist_ids %}
+        <em>(Shortlisted)</em>
+      {% else %}
+        <a href="{% url 'property:shortlist_add' l.id %}">Save</a>
+      {% endif %}
+    </li>
+  {% empty %}
+    <li>No listings yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

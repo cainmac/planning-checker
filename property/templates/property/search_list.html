@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Saved searches</h1>
+<p><a href="{% url 'property:search_create' %}">+ New saved search</a></p>
+
+<ul>
+  {% for s in searches %}
+    <li>
+      <strong>{{ s.name }}</strong> ({{ s.get_portal_display }}) —
+      <form method="post" action="{% url 'property:search_delete' s.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit">Delete</button>
+      </form>
+    </li>
+  {% empty %}
+    <li>No saved searches yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

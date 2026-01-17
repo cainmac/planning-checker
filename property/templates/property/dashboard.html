@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Property Tracker</h1>
+<ul>
+  <li><a href="{% url 'property:search_list' %}">Saved searches</a></li>
+  <li><a href="{% url 'property:listings_inbox' %}">Listings inbox</a></li>
+  <li><a href="{% url 'property:shortlist' %}">Shortlist</a></li>
+</ul>
+{% endblock %}
